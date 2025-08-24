@@ -26,6 +26,13 @@ It provides **real-time debugging support, context-aware hints ** — all in a c
    ```bash
    git clone https://github.com/sasi-9393/AI-assistant.git
 
+🛡️ Disclaimer
+
+
+It does not collect personal data; all chat history is stored locally.
+Users are responsible for managing their own API keys.
+
+
 📬 Feedback / Contributions
 
 Contributions, issues, and feature requests are welcome!
