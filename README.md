@@ -34,5 +34,5 @@ It does not collect personal data; all chat history is stored locally.
 
 📬 Feedback / Contributions
 
-Contributions, issues, and feature requests are welcome!
-Feel free to open a pull request or raise an issue.
+Contributions, issues, and feature requests are welcome!<br>
+Feel free to open a pull request or raise an issue.<br>
