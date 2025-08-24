@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "AI Coding Assistant",
+  "version": "0.1",
+  "author": "sasi",
+  "description": "A description about your Chrome Extension...",
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://maang.in/problems/*"
+      ],
+      "js": [
+        "content.js"
+      ]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "assets/bookmark.png",
+        "assets/delete.png",
+        "inject.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
+  "action": {
+    "default_icon": {
+      "16": "assets/bookmark.png",
+      "24": "assets/bookmark.png",
+      "32": "assets/bookmark.png"
+    },
+    "default_popup": "index.html",
+    "default_title": "A tooltip popup description when you hover over the Chrome Extension icon."
+  }
+}
