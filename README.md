@@ -24,4 +24,9 @@ It provides **real-time debugging support, context-aware hints ** — all in a c
 ## 📦 Installation
 1. Clone or download this repository:
    ```bash
-   git clone https://github.com/your-username/ai-chrome-extension.git
+   git clone https://github.com/sasi-9393/AI-assistant.git
+
+📬 Feedback / Contributions
+
+Contributions, issues, and feature requests are welcome!
+Feel free to open a pull request or raise an issue.
