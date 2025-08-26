@@ -56,7 +56,7 @@ window.addEventListener("xhrDataFetched", (event) => {
         if (idMatch) {
             const id = idMatch[1];
             problemDataMap.set(id, data.response);
-            console.log("Data is fetched ", id, data.response);
+            //console.log("Data is fetched ", id, problemDataMap.get(id));
         }
     }
 })
@@ -89,8 +89,7 @@ function makeAvatar(type) {
 
 
 function makeMessageRow(type, text) {
-    //if (type === "bot") console.log(text);
-    if (type === "user") document.getElementById("inp").value = "";
+    document.getElementById("inp").value = "";
     const row = document.createElement("div");
     row.style.display = "flex";
     row.style.alignItems = "flex-start";
@@ -133,21 +132,42 @@ function makeMessageRow(type, text) {
 
 
 let chatHistory = []; // keeps track of chat history
+// but now when we go to other problems these chat history will not be resetted and the context will be merged
+// so save the chat history by problem id and also fetch the chathistory for a problem with id
 
 
 async function sendMessageToAPI(value) {
 
     const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-    const API_KEY = "AIzaSyCr45yUpPYl5SiPBTLXx-k1H3ijNqkt9Y4";
+    const API_KEY = "AIzaSyAu29KeU_0wv7Ddea7c13pn3IKvYtNCekg";
 
-    // Adds the user message with role as "user" describing it is user message
+    const id = getProblemId();
+    let chatHistory = await getChatHistory(id); // so based on current id char history of it is fetched
 
-    chatHistory.push({
-        role: "user",
-        parts: [
-            { text: value }
+    if (chatHistory.length === 0) {
+        console.log("there is no chat history");
+        const initialPrompt = await buildInitialPrompt(value);
+        console.log(initialPrompt);
+        console.log(chatHistory.length);
+        chatHistory = [
+            {
+                role: "user",
+                parts: [
+                    { text: initialPrompt }
+                ]
+            }
         ]
-    });
+    }
+    else {
+        console.log("Have storage data");
+        chatHistory.push({
+            role: "user",
+            parts: [
+                { text: value }
+            ]
+        });
+    }
+
 
     try {
         const payload = {
@@ -167,12 +187,15 @@ async function sendMessageToAPI(value) {
         const data = await response.json();
         const aiResponse = data.candidates[0].content.parts[0].text;
 
+
+
         chatHistory.push({
             role: "model",
             parts: [
                 { text: aiResponse }
             ]
         })
+        await setChatHistory(id, chatHistory); // saved it to get or fetch the history further
         try {
             return aiResponse;
         }
@@ -187,9 +210,43 @@ async function sendMessageToAPI(value) {
 
 
 }
+function clearStorage() {
+    chrome.storage.local.clear(() => {
+        console.log("Local storage cleared");
+    });
+}
+
+function getChatHistory(id) {
+    return new Promise((resolve, reject) => {
+
+        chrome.storage.local.get([id], (result) => {
+            if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+            } else {
+
+                resolve(result[id] || []);
+            }
+        });
+    });
+}
 
 
-function addChatBoxConainer() {
+
+function setChatHistory(id, chatHistory) {
+    return new Promise((resolve, reject) => {
+        const data = {};
+        data[id] = chatHistory;
+        chrome.storage.local.set(data, () => {
+            if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
+            else {
+                resolve();
+            }
+        })
+    })
+}
+
+
+async function addChatBoxConainer() {
     if (document.getElementById("chat-box-container")) return;
 
     const outerContainer = document.createElement("div");
@@ -262,6 +319,45 @@ function addChatBoxConainer() {
     messagesArea.style.flexDirection = "column";
     messagesArea.style.gap = "12px";
     messagesArea.style.background = "linear-gradient(180deg, #ffffff 0%, #fbfdff 100%)";
+    messagesArea.innerHTML = "";
+
+    const chatHistory = await getChatHistory(getProblemId());
+    chatHistory.forEach((item) => {
+        if (item.parts && item.parts[0] && item.parts[0].text) {
+            const type = item.role === "user" ? "user" : "bot";
+            const messageElement = document.createElement("div");
+            messageElement.style.display = "flex";
+            messageElement.style.alignItems = "flex-start";
+            messageElement.style.gap = "10px";
+
+            const avatar = makeAvatar(type);
+            const msg = document.createElement("div");
+            msg.textContent = item.parts[0].text;
+            msg.style.padding = "8px 12px";
+            msg.style.borderRadius = "12px";
+            msg.style.margin = "6px 0";
+            msg.style.maxWidth = "80%";
+            msg.style.wordWrap = "break-word";
+
+            if (type === "user") {
+                msg.style.background = "#007bff";
+                msg.style.color = "white";
+                msg.style.alignSelf = "flex-end";
+                messageElement.style.justifyContent = "flex-end";
+                messageElement.appendChild(msg);
+                messageElement.appendChild(avatar);
+            } else {
+                msg.style.background = "#f1f5f9";
+                msg.style.color = "#0f1724";
+                msg.style.alignSelf = "flex-start";
+                messageElement.style.justifyContent = "flex-start";
+                messageElement.appendChild(avatar);
+                messageElement.appendChild(msg);
+            }
+
+            messagesArea.appendChild(messageElement);
+        }
+    });
 
 
 
@@ -318,7 +414,7 @@ function addChatBoxConainer() {
             e.preventDefault();
             const inputValue = document.getElementById("inp").value;
             makeMessageRow("user", inputValue);
-            console.log(inputValue);
+            //console.log(inputValue);
             document.getElementById("chat-messages").appendChild(thinking)
             const data = await sendMessageToAPI(inputValue);
             thinking.remove();
@@ -460,3 +556,69 @@ function getProblemDataById(id) {
 
 // we can go to gemini api and see the interactive chat session for it so maintain a chatHistory variable for it 
 // see the gemini interactive chat documentation and we have to maintain it like that to make it interactive
+function buildInitialPrompt(userQuery) {
+    const problemId = getProblemId();
+    const problemData = JSON.parse(getProblemDataById(problemId));
+    let obj = problemData.data;
+    const problemDesc = obj.body;
+    const hints = problemData.hints;
+    const title = problemData.title || "";
+
+    if (!problemData || !problemData.data) {
+        return `User Query: ${userQuery}`; // fallback
+    }
+
+    let hintsConstructed = "";
+    for (let i in hints) {
+        hintsConstructed += `- ${hints[i]}\n`;
+    }
+
+    const prompt = `
+You are an **expert competitive programming mentor**.  
+First, carefully read and process the given problem details.  
+Only after fully understanding, respond in a **clear, structured, and highly readable format**.
+This is the problem data that you 
+
+### Problem Title
+${title}
+
+### Problem Description
+${problemDesc}
+
+### Hints
+${hintsConstructed || "No hints provided."}
+
+### User Query
+${userQuery}
+
+---
+and answer anything based on user query specific, eventhough you have problem data but give and answer with it if it requires else require according to user query
+
+### Guidelines for Your Response
+- **Step 1: Understand**  
+  First internally process the problem, constraints, and hints before answering.  
+- **Step 2: Restate the problem**  
+  Rewrite the problem in simpler words so the student knows you understood it.  
+- **Step 3: Key insights**  
+  List important concepts, tricky constraints, or edge cases.  
+- **Step 4: Step-by-step solution**  
+  Break the reasoning into numbered steps, explaining like a teacher.  
+- **Step 5: Code (if needed)**  
+  Provide clean, well-commented code in C++/Python. Format in a code block.  
+- **Step 6: Debugging (if asked)**  
+  If the query is about their code, carefully analyze and explain mistakes.  
+
+---
+
+### Formatting Rules
+- Use **headings (###)** for each major section.  
+- Use **numbered steps or bullet points** instead of long paragraphs.  
+- Add **blank lines** between sections for readability.  
+- Keep the tone **mentor-like, clear, and encouraging**.  
+- Prefer teaching/explaining first, then showing code.  
+
+    `.trim();
+
+    console.log(prompt);
+    return prompt;
+}
