@@ -3,7 +3,7 @@
   "name": "AI Coding Assistant",
   "version": "0.1",
   "author": "sasi",
-  "description": "A description about your Chrome Extension...",
+  "description": "AI chatbot that solves problems and auto-extracts problem metadata for faster solutions.",
   "permissions": [
     "storage",
     "tabs"
